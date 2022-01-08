@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Northstar Server Browser</title>
+
+    <style>
+        html, body {
+            height: 100vh;
+            overflow: hidden;
+        }
+        body {
+            margin: 0;
+            font-size: 0.75rem;
+            display: grid;
+            grid-template-areas:
+                'header header'
+                'filters table'
+                'stats table'
+                'footer table';
+            grid-template-columns: 1fr 5fr;
+            grid-template-rows: auto 1fr auto;
+            background: #141a32;
+            color: white;
+        }
+        body, input {
+            font-family: Arial, sans-serif;
+        }
+        a {
+            color: inherit;
+            text-decoration: underline;
+        }
+        body > svg {
+            display: none;
+        }
+
+        header {
+            grid-area: header;
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            user-select: none;
+        }
+        header img {
+            height: 3rem;
+        }
+        header div {
+            margin-left: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        header h1 {
+            font-size: 1.2rem;
+            font-weight: normal;
+            margin: 0;
+        }
+        header p {
+            margin: 0;
+            opacity: 0.5;
+        }
+
+        .textbox, .dropdown {
+            border: none;
+            padding: 0.5rem 0.7rem;
+            background: #37405D;
+            border-radius: 0.5rem;
+
+            display: flex;
+            align-items: center;
+        }
+        .textbox {
+            height: 1rem;
+        }
+        .textbox input {
+            background: transparent;
+            border: none;
+            flex-grow: 1;
+            color: white;
+            outline: none;
+        }
+
+        .clear {
+            border: none;
+            background: none;
+            border-radius: 1rem;
+            padding: 0;
+            color: #aaa;
+            margin-top: -0.125rem;
+        }
+        .clear:hover {
+            color: white;
+        }
+        .clear svg {
+            height: 1.25rem;
+            display: block;
+        }
+
+        nav, #stats, footer {
+            background: #212B4E;
+            user-select: none;
+            padding: 1rem;
+        }
+        nav {
+            grid-area: filters;
+            overflow: auto;
+            display: grid;
+            grid-template-rows: 1fr auto;
+        }
+        nav form > span {
+            display: block;
+            margin-top: 1rem;
+            margin-bottom: 0.25rem;
+            opacity: 0.5;
+        }
+
+        .dropdown {
+        }
+        .dropdown-header {
+            flex-grow: 1;
+        }
+        .dropdown-header span {
+            display: inline-block;
+        }
+        .dropdown-header span:not(:last-child):after {
+            display: inline-block;
+            margin: 0 0.25rem;
+            opacity: 0.5;
+        }
+        .dropdown-or .dropdown-header span:not(:last-child):after {
+            content: "or";
+        }
+        .dropdown-and .dropdown-header span:not(:last-child):after {
+            content: "and";
+        }
+        .dropdown-items {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+        }
+        .dropdown:not(.dropdown-open) {
+            cursor: pointer;
+        }
+        .dropdown.dropdown-open .dropdown-header, .dropdown.dropdown-open .clear {
+            display: none;
+        }
+        .dropdown:not(.dropdown-open) .dropdown-items {
+            display: none;
+        }
+        .dropdown-items label {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border-radius: 0.25rem;
+            padding: 0.125rem;
+        }
+        .dropdown-items label:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .dropdown-items input {
+            display: inline-block;
+            margin-right: 0.3rem;
+        }
+
+        nav form > label:first-of-type {
+            margin-top: 1rem;
+        }
+        nav form > label {
+            display: block;
+            padding: 0.25rem;
+            border-radius: 0.25rem;
+        }
+        nav form > label:hover {
+            background: #37405D;
+        }
+        nav form > label input {
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+
+        .table-container-outer {
+            grid-area: table;
+            overflow: auto;
+            position: relative;
+            margin: 0 1rem 1rem 1rem;
+        }
+        table {
+            width: 100%;
+            border-spacing: 0;
+        }
+        table tr {
+            height: 2rem;
+        }
+        table tr:nth-child(even) td, table th {
+            background: #20263C;
+        }
+        table tr:nth-child(odd) td {
+            background: #2C3147;
+        }
+        table tr:hover td, .server-selected td {
+            background: #37405D !important;
+        }
+        table td:not(:first-child), table th:not(:first-child) {
+            padding: 0.5rem 0.8rem;
+            vertical-align: top;
+        }
+        table th {
+            cursor: pointer;
+            position: sticky;
+            top: 0;
+            text-align: left;
+            white-space: nowrap;
+            user-select: none;
+        }
+        table tr:not(.server-selected) td {
+            cursor: pointer;
+            user-select: none;
+        }
+        table th:hover {
+            background: #37405D;
+        }
+        table td:first-child, th:first-child {
+            text-align: center;
+        }
+        table td:not(:last-child), table th:not(:last-child) {
+            border-right: solid #141a32 2px;
+        }
+        table th svg {
+            position: absolute;
+            right: 0.5rem;
+            top: 0.5rem;
+            height: 1rem;
+        }
+        table th:not(.sort-down):not(.sort-up) svg {
+            display: none;
+        }
+        table th.sort-up svg {
+            transform: rotate(180deg);
+        }
+        table td svg {
+            height: 1rem;
+            margin: 0 auto;
+            display: block;
+        }
+        .server-details h3 {
+            font-size: inherit;
+            font-weight: normal;
+            margin: 0;
+        }
+        .server-details h3 span {
+            background: rgba(255, 255, 0, 0.2);
+            font-weight: bold;
+            border-radius: 2px;
+        }
+        .server-details > div {
+            opacity: 0.5;
+            margin-top: 0.5rem;
+        }
+        .server-details p {
+            margin: 0;
+        }
+        .server-details ul {
+            margin: 0.25rem 0 0 0;
+            padding-left: 1.5rem;
+        }
+
+        #stats {
+            margin-top: 2px;
+        }
+        #stats div {
+            opacity: 0.5;
+        }
+        #stats div:not(:first-child) {
+            margin-top: 0.5rem;
+        }
+        footer {
+            margin-top: 2px;
+        }
+        footer div {
+            opacity: 0.5;
+        }
+
+        .status {
+            text-align: center;
+            opacity: 0.5;
+        }
+        body:not(.loading-state) #loading-state {
+            display: none;
+        }
+        body:not(.error-state) #error-state {
+            display: none;
+        }
+    </style>
+</head>
+<body class="loading-state">
+
+<svg width="0" height="0">
+    <defs>
+        <path id="lock-icon" d="M12 2a4 4 0 0 1 4 4v2h2.5A1.5 1.5 0 0 1 20 9.5v11a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 20.5v-11A1.5 1.5 0 0 1 5.5 8H8V6a4 4 0 0 1 4-4Zm0 11.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3ZM12 4a2 2 0 0 0-2 2v2h4V6a2 2 0 0 0-2-2Z" fill="currentColor" />
+        <path id="arrow-down-icon" d="M11.883 4.01 12 4.003a1 1 0 0 1 .993.884l.007.116v11.584l2.293-2.294a1 1 0 0 1 1.32-.084l.094.084a1 1 0 0 1 .084 1.32l-.084.094-3.996 4a1 1 0 0 1-1.32.084l-.094-.084-4.004-4a1 1 0 0 1 1.32-1.498l.094.084L11 16.582V5.003a1 1 0 0 1 .883-.993L12 4.003l-.117.007Z" fill="currentColor" />
+        <path id="clear-icon" d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2Zm3.53 6.47-.084-.073a.75.75 0 0 0-.882-.007l-.094.08L12 10.939l-2.47-2.47-.084-.072a.75.75 0 0 0-.882-.007l-.094.08-.073.084a.75.75 0 0 0-.007.882l.08.094L10.939 12l-2.47 2.47-.072.084a.75.75 0 0 0-.007.882l.08.094.084.073a.75.75 0 0 0 .882.007l.094-.08L12 13.061l2.47 2.47.084.072a.75.75 0 0 0 .882.007l.094-.08.073-.084a.75.75 0 0 0 .007-.882l-.08-.094L13.061 12l2.47-2.47.072-.084a.75.75 0 0 0 .007-.882l-.08-.094-.084-.073.084.073Z" fill="currentColor" />
+    </defs>
+</svg>
+
+<header>
+    <img width="48" height="48" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAEsGlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4KPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iWE1QIENvcmUgNS41LjAiPgogPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KICA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIgogICAgeG1sbnM6dGlmZj0iaHR0cDovL25zLmFkb2JlLmNvbS90aWZmLzEuMC8iCiAgICB4bWxuczpleGlmPSJodHRwOi8vbnMuYWRvYmUuY29tL2V4aWYvMS4wLyIKICAgIHhtbG5zOnBob3Rvc2hvcD0iaHR0cDovL25zLmFkb2JlLmNvbS9waG90b3Nob3AvMS4wLyIKICAgIHhtbG5zOnhtcD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wLyIKICAgIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIgogICAgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIKICAgdGlmZjpJbWFnZUxlbmd0aD0iNDgiCiAgIHRpZmY6SW1hZ2VXaWR0aD0iNDgiCiAgIHRpZmY6UmVzb2x1dGlvblVuaXQ9IjIiCiAgIHRpZmY6WFJlc29sdXRpb249IjcyLjAiCiAgIHRpZmY6WVJlc29sdXRpb249IjcyLjAiCiAgIGV4aWY6UGl4ZWxYRGltZW5zaW9uPSI0OCIKICAgZXhpZjpQaXhlbFlEaW1lbnNpb249IjQ4IgogICBleGlmOkNvbG9yU3BhY2U9IjEiCiAgIHBob3Rvc2hvcDpDb2xvck1vZGU9IjMiCiAgIHBob3Rvc2hvcDpJQ0NQcm9maWxlPSJzUkdCIElFQzYxOTY2LTIuMSIKICAgeG1wOk1vZGlmeURhdGU9IjIwMjItMDEt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" alt="Northstar Logo" />
+    <div>
+        <h1>Northstar Server Browser</h1>
+        <p>
+            Useful links:
+            <a href="https://github.com/R2Northstar/Northstar" target="_blank">Northstar repo</a>,
+            <a href="https://r2northstar.gitbook.io/r2northstar-wiki/" target="_blank">Northstar wiki</a>,
+            <a href="https://northstar.tf/discord" target="_blank">Northstar Discord</a>
+        </p>
+    </div>
+</header>
+
+<nav>
+    <form id="form">
+        <div class="textbox"><input type="text" id="filter" placeholder="Search servers..." aria-label="Server search" /></div>
+        <span id="regions-label">Regions:</span>
+        <div class="dropdown dropdown-or" id="regions" aria-labelledby="regions-label"></div>
+        <span id="gamemodes-label">Gamemodes:</span>
+        <div class="dropdown dropdown-or" id="gamemodes" aria-labelledby="gamemodes-label"></div>
+        <span id="maps-label">Maps:</span>
+        <div class="dropdown dropdown-or" id="maps" aria-labelledby="maps-label"></div>
+        <span id="mods-label">Mods:</span>
+        <div class="dropdown dropdown-and" id="mods" aria-labelledby="mods-label"></div>
+        <label><input type="checkbox" id="include-full" />Include full</label>
+        <label><input type="checkbox" id="include-empty" />Include empty</label>
+        <label><input type="checkbox" id="include-private" />Include private</label>
+    </form>
+</nav>
+
+<div id="stats">
+    <div>Last updated <span id="last-updated-stat"></span></div>
+    <div>
+        <span id="servers-listed-stat"></span> servers listed, <span id="servers-online-stat"></span> total
+    </div>
+    <div>
+        <span id="players-listed-stat"></span> players listed, <span id="players-online-stat"></span> total
+    </div>
+</div>
+
+<footer>
+    <div>
+        Built by <a href="https://github.com/cpdt" target="_blank">cpdt</a> just for you xox
+    </div>
+</footer>
+
+<div class="table-container-outer">
+    <div class="table-container-inner">
+        <table>
+            <colgroup>
+                <col style="width: 1.5rem; max-width: 1.5rem" />
+                <col style="width: 40rem" />
+                <col style="width: 5.5rem" />
+                <col style="width: 10rem" />
+                <col style="width: 10rem" />
+            </colgroup>
+            <thead>
+                <tr>
+                    <th scope="col" aria-label="Privacy" role="button" id="privacy-header" data-by="hasPassword"></th>
+                    <th scope="col" role="button" id="name-header" data-by="name">Name</th>
+                    <th scope="col" role="button" id="players-header" data-by="playerCount">Players</th>
+                    <th scope="col" role="button" id="gamemode-header" data-by="playlist">Gamemode</th>
+                    <th scope="col" role="button" id="map-header" data-by="map">Map</th>
+                </tr>
+            </thead>
+            <tbody id="servers"></tbody>
+        </table>
+        <p class="status" id="loading-state">Loading, hold on...</p>
+        <p class="status" id="error-state">Couldn't refresh the server list, try again later?</p>
+    </div>
+</div>
+
+<script>
+
+const REFETCH_WAIT_MS = 30000; // 30 seconds
+const REGION_REGEX = /^\[(.+?)\]/;
+const DEFAULT_QUERY = {
+    filter: '',
+    regions: [],
+    gamemodes: [],
+    maps: [],
+    mods: [],
+    includeFull: true,
+    includeEmpty: true,
+    includePrivate: true,
+};
+const KNOWN_GAMEMODES = {
+    private_match: 'Private match',
+    tdm: 'Skirmish',
+    ps: 'Pilots vs Pilots',
+    gg: 'Gungame',
+    tt: 'Titan Tag',
+    inf: 'Infected',
+    fastball: 'Fastball',
+    ctf_comp: 'Competitive Capture the Flag',
+    hs: 'Hide and Seek',
+    cp: 'Hardpoint',
+    lts: 'Last Titan Standing',
+    ctf: 'Capture the Flag',
+    ttdm: 'Titan Brawl',
+    turbo_ttdm: 'Turbo Titan Brawl',
+    attdm: 'Aegis Titan Brawl',
+    ffa: 'Free for all',
+    fra: 'Free Agents',
+    coliseum: 'Coliseum',
+    lf: 'Live Fire',
+    rocket_lf: 'Rocket Arena',
+    mfd: 'Marked for Death'
+};
+const KNOWN_MAPS = {
+    mp_angel_city: 'Angel City',
+    mp_black_water_canal: 'Black Water Canal',
+    mp_grave: 'Boomtown',
+    mp_colony02: 'Colony',
+    mp_complex3: 'Complex',
+    mp_crashsite3: 'Crashsite',
+    mp_drydock: 'DryDock',
+    mp_eden: 'Eden',
+    mp_thaw: 'Exoplanet',
+    mp_forwardbase_kodai: 'Forward Base Kodai',
+    mp_glitch: 'Glitch',
+    mp_homestead: 'Homestead',
+    mp_relic02: 'Relic',
+    mp_rise: 'Rise',
+    mp_wargames: 'Wargames',
+    mp_lobby: 'Lobby',
+    mp_lf_deck: 'Deck',
+    mp_lf_meadow: 'Meadow',
+    mp_lf_stacks: 'Stacks',
+    mp_lf_township: 'Township',
+    mp_lf_traffic: 'Traffic',
+    mp_lf_uma: 'UMA',
+    mp_coliseum: 'The Coliseum',
+    mp_coliseum_column: 'Pillars',
+};
+
+const $filterInput = document.getElementById('filter');
+const $regionsInput = document.getElementById('regions');
+const $gamemodesInput = document.getElementById('gamemodes');
+const $mapsInput = document.getElementById('maps');
+const $modsInput = document.getElementById('mods');
+const $includeFullInput = document.getElementById('include-full');
+const $includeEmptyInput = document.getElementById('include-empty');
+const $includePrivateInput = document.getElementById('include-private');
+const $serversTable = document.getElementById('servers');
+const $lastUpdatedStat = document.getElementById('last-updated-stat');
+const $serversListedStat = document.getElementById('servers-listed-stat');
+const $serversOnlineStat = document.getElementById('servers-online-stat');
+const $playersListedStat = document.getElementById('players-listed-stat');
+const $playersOnlineStat = document.getElementById('players-online-stat');
+
+let isMounting = true;
+let uiState = {
+    state: 'loading',
+};
+let currentQuery = {...DEFAULT_QUERY};
+const currentSort = {
+    sortBy: '',
+    sortInverted: false,
+};
+let currentServerId = undefined;
+
+function clearNode($node) {
+    $node.textContent = '';
+}
+
+function $useSvg(href, width, height) {
+    const $svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    $svg.setAttributeNS(null, 'width', width);
+    $svg.setAttributeNS(null, 'height', height);
+    $svg.setAttributeNS(null, 'viewBox', `0 0 ${width} ${height}`);
+
+    const $use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    $use.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', `#${href}`);
+    $svg.appendChild($use);
+
+    return $svg;
+}
+
+function serializeQuery(searchParams, query) {
+    if (query.filter !== '') searchParams.set('filter', query.filter);
+    else searchParams.delete('filter');
+    if (query.regions.length > 0) searchParams.set('regions', query.regions.join(','));
+    else searchParams.delete('regions');
+    if (query.gamemodes.length > 0) searchParams.set('gamemodes', query.gamemodes.join(','));
+    else searchParams.delete('gamemodes');
+    if (query.maps.length > 0) searchParams.set('maps', query.maps.join(','));
+    else searchParams.delete('maps');
+    if (query.mods.length > 0) searchParams.set('mods', query.mods.join(','));
+    else searchParams.delete('mods');
+    if (!query.includeFull) searchParams.set('full', 'exclude');
+    else searchParams.delete('full');
+    if (!query.includeEmpty) searchParams.set('empty', 'exclude');
+    else searchParams.delete('empty');
+    if (!query.includePrivate) searchParams.set('private', 'exclude');
+    else searchParams.delete('private');
+}
+
+function deserializeQuery(searchParams) {
+    const query = {...DEFAULT_QUERY};
+    if (searchParams.has('filter')) query.filter = searchParams.get('filter');
+    if (searchParams.has('regions')) query.regions = searchParams.get('regions').split(',');
+    if (searchParams.has('gamemodes')) query.gamemodes = searchParams.get('gamemodes').split(',');
+    if (searchParams.has('maps')) query.maps = searchParams.get('maps').split(',');
+    if (searchParams.has('mods')) query.mods = searchParams.get('mods').split(',');
+    if (searchParams.get('full') === 'exclude') query.includeFull = false;
+    if (searchParams.get('empty') === 'exclude') query.includeEmpty = false;
+    if (searchParams.get('private') === 'exclude') query.includePrivate = false;
+    return query;
+}
+
+function setQueryParam(param, value) {
+    if (isMounting || value === currentQuery[param]) return;
+    setCurrentQuery({
+        ...currentQuery,
+        [param]: value,
+    });
+}
+
+function setCurrentQuery(newQuery) {
+    currentQuery = newQuery;
+    uiQueueRender();
+
+    const url = new URL(window.location);
+    serializeQuery(url.searchParams, currentQuery);
+    if (url.toString() !== window.location.toString()) {
+        window.history.replaceState({}, '', url);
+    }
+}
+
+function simplifyRegion(region) {
+    return region.toUpperCase().replace(/ /g, "-");
+}
+
+function displayGamemode(gamemode) {
+    return KNOWN_GAMEMODES[gamemode] || gamemode;
+}
+
+function displayMap(map) {
+    return KNOWN_MAPS[map] || map;
+}
+
+function createMenu(openByDefault, openCb, closeCb) {
+    let isOpen = false;
+
+    const open = e => {
+        if (isOpen) {
+            e.stopPropagation();
+            return;
+        }
+        isOpen = true;
+
+        setTimeout(() => {
+            const clickHandler = () => {
+                isOpen = false;
+                document.body.removeEventListener('click', clickHandler);
+                closeCb();
+            };
+            document.body.addEventListener('click', clickHandler);
+        });
+        openCb();
+    };
+    if (openByDefault) open();
+    return open;
+}
+
+function uiGetServerList() {
+    switch (uiState.state) {
+        case 'loading':
+        case 'error':
+            return [];
+        case 'ready':
+            return uiState.servers;
+        default: throw new Error(`Unknown UI state ${uiState.state}`);
+    }
+}
+
+function uiUpdateSelectors() {
+    const serverList = uiGetServerList();
+
+    const regionsSet = new Set();
+    const modsSet = new Set();
+
+    for (const server of serverList) {
+        const regionMatch = server.name.match(REGION_REGEX);
+        if (regionMatch !== null) {
+            regionsSet.add(simplifyRegion(regionMatch[1]));
+        }
+
+        for (const mod of server.modInfo.Mods) {
+            modsSet.add(mod.Name);
+        }
+    }
+
+    const regions = Array.from(regionsSet);
+    regions.sort();
+    const mods = Array.from(modsSet);
+    mods.sort();
+
+    dropdownSetEntries($regionsInput, regions.map(region => [region, region]));
+    dropdownSetEntries($modsInput, mods.map(mod => [mod, mod]));
+}
+
+let uiIsRenderQueued = false;
+function uiQueueRender() {
+    if (uiIsRenderQueued) return;
+    queueMicrotask(() => {
+        uiIsRenderQueued = false;
+        uiRender();
+    });
+}
+
+function uiRender() {
+    const serverList = uiGetServerList();
+    const filteredServerList = serverList.filter(server => {
+        if (currentQuery.filter !== '' && server.name.toLowerCase().indexOf(currentQuery.filter.toLowerCase()) === -1) {
+            return false;
+        }
+        if (currentQuery.regions.length > 0) {
+            const simplifiedName = simplifyRegion(server.name);
+            if (!currentQuery.regions.some(region => simplifiedName.startsWith(`[${region}]`))) {
+                return false;
+            }
+        }
+        if (currentQuery.gamemodes.length > 0 && currentQuery.gamemodes.indexOf(server.playlist) === -1) {
+            return false;
+        }
+        if (currentQuery.maps.length > 0 && currentQuery.maps.indexOf(server.map) === -1) {
+            return false;
+        }
+        if (!currentQuery.mods.every(modName => server.modInfo.Mods.some(mod => mod.Name === modName))) {
+            return false;
+        }
+        if (!currentQuery.includeFull && server.playerCount === server.maxPlayers) {
+            return false;
+        }
+        if (!currentQuery.includeEmpty && server.playerCount === 0) {
+            return false;
+        }
+        if (!currentQuery.includePrivate && server.hasPassword) {
+            return false;
+        }
+
+        return true;
+    });
+
+    if (currentSort.sortBy) {
+        filteredServerList.sort((a, b) => {
+            //let isABeforeB = a[currentSort.sortBy] < b[currentSort.sortBy];
+            let isABeforeB;
+            const aVal = a[currentSort.sortBy];
+            const bVal = b[currentSort.sortBy];
+            if (typeof aVal === 'string') {
+                isABeforeB = aVal.localeCompare(bVal) > 0;
+            } else {
+                isABeforeB = aVal < bVal;
+            }
+
+            if (currentSort.sortInverted) isABeforeB = !isABeforeB;
+            return isABeforeB ? 1 : -1;
+        });
+    }
+
+    clearNode($serversTable);
+    for (const server of filteredServerList) {
+        const $row = document.createElement('tr');
+
+        const $privateCell = document.createElement('td');
+        if (server.hasPassword) {
+            $privateCell.appendChild($useSvg('lock-icon', 24, 24));
+        }
+        $row.appendChild($privateCell);
+
+        const $detailsCell = document.createElement('td');
+        $detailsCell.classList.add('server-details');
+        const $serverName = document.createElement('h3');
+        if (currentQuery.filter !== '') {
+            const filterIndex = server.name.toLowerCase().indexOf(currentQuery.filter.toLowerCase());
+            $serverName.append(server.name.substr(0, filterIndex));
+
+            const $highlight = document.createElement('span');
+            $highlight.textContent = server.name.substr(filterIndex, currentQuery.filter.length);
+            $serverName.appendChild($highlight);
+
+            $serverName.append(server.name.substr(filterIndex + currentQuery.filter.length));
+        } else {
+            $serverName.textContent = server.name;
+        }
+        $detailsCell.appendChild($serverName);
+        $row.appendChild($detailsCell);
+
+        const $playersCell = document.createElement('td');
+        $playersCell.textContent = `${server.playerCount}/${server.maxPlayers}`;
+        $row.appendChild($playersCell);
+
+        const $gamemodeCell = document.createElement('td');
+        $gamemodeCell.textContent = displayGamemode(server.playlist);
+        $row.appendChild($gamemodeCell);
+
+        const $mapCell = document.createElement('td');
+        $mapCell.textContent = displayMap(server.map);
+        $row.appendChild($mapCell);
+
+        const $details = document.createElement('div');
+
+        const $description = document.createElement('p');
+        $description.textContent = server.description;
+        $details.appendChild($description);
+
+        const $mods = document.createElement('ul');
+        for (const mod of server.modInfo.Mods) {
+            const $mod = document.createElement('li');
+            $mod.textContent = `${mod.Name} ${mod.Version}`;
+            $mods.appendChild($mod);
+        }
+        $details.append($mods);
+
+        $row.onclick = createMenu(
+            currentServerId === server.id,
+            () => {
+                currentServerId = server.id;
+                $detailsCell.appendChild($details);
+                $row.classList.add('server-selected');
+            },
+            () => {
+                if (currentServerId === server.id) currentServerId = undefined;
+                $detailsCell.removeChild($details);
+                $row.classList.remove('server-selected');
+            }
+        );
+
+        $serversTable.appendChild($row);
+    }
+
+    if (uiState.state === 'loading') {
+        $lastUpdatedStat.textContent = 'never';
+    } else if (uiState.state === 'ready') {
+        $lastUpdatedStat.textContent = uiState.updated.toLocaleTimeString();
+    }
+
+    $serversListedStat.textContent = filteredServerList.length.toString();
+    $serversOnlineStat.textContent = serverList.length.toString();
+    $playersListedStat.textContent = `${filteredServerList.reduce((sum, server) => sum + server.playerCount, 0)} / ${filteredServerList.reduce((sum, server) => sum + server.maxPlayers, 0)}`;
+    $playersOnlineStat.textContent = `${serverList.reduce((sum, server) => sum + server.playerCount, 0)} / ${serverList.reduce((sum, server) => sum + server.maxPlayers, 0)}`;
+}
+
+function dropdownMount($dropdown) {
+    clearNode($dropdown);
+
+    $dropdown.onclick = createMenu(
+        false,
+        () => $dropdown.classList.add('dropdown-open'),
+        () => $dropdown.classList.remove('dropdown-open'),
+    );
+
+    const $header = document.createElement('div');
+    $header.className = 'dropdown-header';
+    $dropdown.appendChild($header);
+
+    const $clear = document.createElement('button');
+    $clear.className = 'clear';
+    $clear.onclick = e => {
+        e.stopPropagation();
+        dropdownSetSelectedEntries($dropdown, []);
+    };
+    $clear.appendChild($useSvg('clear-icon', 24, 24));
+    $dropdown.appendChild($clear);
+
+    const $items = document.createElement('div');
+    $items.className = 'dropdown-items';
+    $dropdown.appendChild($items);
+    $items.onclick = e => e.stopPropagation();
+
+    dropdownUpdate($dropdown);
+}
+
+let dropdownIgnoreUpdates = false;
+function dropdownUpdate($dropdown) {
+    if (dropdownIgnoreUpdates) return;
+
+    const $items = $dropdown.getElementsByClassName('dropdown-items')[0];
+    const checkboxes = $items.getElementsByTagName('input');
+
+    const selectedEntries = [];
+    for (const $checkbox of checkboxes) {
+        if ($checkbox.checked) {
+            selectedEntries.push([
+                $checkbox.value,
+                $checkbox.dataset.name,
+            ]);
+        }
+    }
+
+    dropdownForceSetSelectedEntries($dropdown, selectedEntries);
+}
+
+function dropdownForceSetSelectedEntries($dropdown, selectedEntries) {
+    const $header = $dropdown.getElementsByClassName('dropdown-header')[0];
+
+    if (selectedEntries.length === 0) {
+        $header.innerHTML = $dropdown.classList.contains('dropdown-and') ? '<span>Any</span>' : '<span>All</span>';
+    } else {
+        clearNode($header);
+        for (const [, name] of selectedEntries) {
+            const $span = document.createElement('span');
+            $span.textContent = name;
+            $header.appendChild($span);
+        }
+    }
+
+    setQueryParam($dropdown.id, selectedEntries.map(([value]) => value));
+}
+
+function dropdownSetEntries($dropdown, entries) {
+    const $items = $dropdown.getElementsByClassName('dropdown-items')[0];
+    const selectedValues = currentQuery[$dropdown.id];
+    clearNode($items);
+    for (const [entryValue, entryName] of entries) {
+        const $label = document.createElement('label');
+        const $input = document.createElement('input');
+        $input.type = 'checkbox';
+        $input.value = entryValue;
+        $input.dataset.name = entryName;
+        $input.checked = selectedValues.indexOf(entryValue) !== -1;
+        $input.onchange = () => dropdownUpdate($dropdown);
+        $label.appendChild($input);
+        $label.append(entryName);
+        $items.appendChild($label);
+    }
+    dropdownUpdate($dropdown);
+}
+
+function dropdownSetSelectedEntries($dropdown, selectedEntries) {
+    const $items = $dropdown.getElementsByClassName('dropdown-items')[0];
+    const checkboxes = $items.getElementsByTagName('input');
+    const selectedValues = new Set(selectedEntries.map(([value]) => value));
+
+    dropdownIgnoreUpdates = true;
+    for (const $checkbox of checkboxes) {
+        $checkbox.checked = selectedValues.has($checkbox.value);
+    }
+    dropdownIgnoreUpdates = false;
+    dropdownForceSetSelectedEntries($dropdown, selectedEntries);
+}
+
+function textboxMount($textbox) {
+    const $input = $textbox.getElementsByTagName('input')[0];
+    const $clear = document.createElement('button');
+    $clear.className = 'clear';
+    $clear.onclick = () => {
+        $input.value = '';
+        $input.dispatchEvent(new Event('input'));
+    };
+    $clear.appendChild($useSvg('clear-icon', 24, 24));
+    $textbox.appendChild($clear);
+}
+
+function sortRemoveClasses() {
+    for (const currentSortDown of document.getElementsByClassName('sort-down')) {
+        currentSortDown.classList.remove('sort-down');
+    }
+    for (const currentSortUp of document.getElementsByClassName('sort-up')) {
+        currentSortUp.classList.remove('sort-up');
+    }
+}
+
+function sortClear() {
+    sortRemoveClasses();
+    currentSort.sortBy = '';
+    uiQueueRender();
+}
+
+function sortSetTo($header, isInverted) {
+    sortRemoveClasses();
+
+    if (isInverted) {
+        $header.classList.add('sort-up');
+    } else {
+        $header.classList.add('sort-down');
+    }
+    currentSort.sortBy = $header.dataset.by;
+    currentSort.sortInverted = isInverted;
+    uiQueueRender();
+}
+
+function sortToggle($header) {
+    if ($header.classList.contains('sort-down')) {
+        sortSetTo($header, true);
+    } else if ($header.classList.contains('sort-up')) {
+        sortClear();
+    } else {
+        sortSetTo($header, false);
+    }
+}
+
+async function fetchServerList() {
+    try {
+        const res = await fetch('https://northstar.tf/client/servers');
+        const servers = await res.json();
+        uiState = {
+            state: 'ready',
+            servers,
+            updated: new Date(),
+        };
+        document.body.classList.remove('loading-state');
+    } catch (err) {
+        console.error('Failed to fetch server list:', err);
+        uiState = { state: 'error' };
+        document.body.classList.remove('loading-state');
+        document.body.classList.add('error-state');
+    }
+
+    uiUpdateSelectors();
+    uiQueueRender();
+}
+
+currentQuery = deserializeQuery(new URL(window.location).searchParams);
+
+let nextRefetchTimeout = 0;
+async function refetchLoopTrigger() {
+    clearTimeout(nextRefetchTimeout);
+    await fetchServerList();
+    nextRefetchTimeout = setTimeout(refetchLoopTrigger, REFETCH_WAIT_MS);
+}
+
+document.getElementById('form').onsubmit = e => e.preventDefault();
+
+for (const $dropdown of document.getElementsByClassName('dropdown')) {
+    dropdownMount($dropdown);
+}
+for (const $textbox of document.getElementsByClassName('textbox')) {
+    textboxMount($textbox);
+}
+for (const $header of document.getElementsByTagName('th')) {
+    $header.onclick = () => sortToggle($header);
+    $header.appendChild($useSvg('arrow-down-icon', 24, 24));
+}
+
+dropdownSetEntries($gamemodesInput, Object.entries(KNOWN_GAMEMODES));
+dropdownSetEntries($mapsInput, Object.entries(KNOWN_MAPS));
+
+$filterInput.oninput = () => setQueryParam('filter', $filterInput.value);
+$includeFullInput.onchange = () => setQueryParam('includeFull', $includeFullInput.checked);
+$includeEmptyInput.onchange = () => setQueryParam('includeEmpty', $includeEmptyInput.checked);
+$includePrivateInput.onchange = () => setQueryParam('includePrivate', $includePrivateInput.checked);
+
+sortSetTo(document.getElementById('players-header'), false);
+
+isMounting = false;
+
+// Update fields to match the current query
+$filterInput.value = currentQuery.filter;
+dropdownSetSelectedEntries($regionsInput, currentQuery.regions.map(region => [region, region]));
+dropdownSetSelectedEntries($gamemodesInput, currentQuery.gamemodes.map(gamemode => [gamemode, displayGamemode(gamemode)]));
+dropdownSetSelectedEntries($mapsInput, currentQuery.maps.map(map => [map, displayMap(map)]));
+dropdownSetSelectedEntries($modsInput, currentQuery.mods.map(mod => [mod, mod]));
+$includeFullInput.checked = currentQuery.includeFull;
+$includeEmptyInput.checked = currentQuery.includeEmpty;
+$includePrivateInput.checked = currentQuery.includePrivate;
+
+refetchLoopTrigger();
+
+</script>
+
+</body>
+</html>
