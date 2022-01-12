@@ -219,9 +219,15 @@
         }
         .table-header svg {
             position: absolute;
-            right: 0.5rem;
             top: 0.5rem;
             height: 1rem;
+        }
+        .table-header:first-child svg {
+            left: 0;
+            width: 100%;
+        }
+        .table-header:not(:first-child) svg {
+            right: 0.5rem;
         }
         .table-header:not(.sort-down):not(.sort-up) svg {
             display: none;
