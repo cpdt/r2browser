@@ -22,7 +22,7 @@
                     'stats table'
                     'footer table';
             grid-template-columns: 1fr 5fr;
-            grid-template-rows: auto 1fr auto;
+            grid-template-rows: auto 1fr auto auto;
         }
         body, input, button {
             font-family: Arial, sans-serif;
@@ -61,14 +61,21 @@
             opacity: 0.5;
         }
 
-        .textbox, .dropdown {
+        .textbox, .dropdown, select {
             border: none;
             padding: 0.5rem 0.7rem;
             background: #37405D;
             border-radius: 0.5rem;
-
+        }
+        .textbox, .dropdown {
             display: flex;
             align-items: center;
+        }
+        select {
+            display: block;
+            font: inherit;
+            color: inherit;
+            width: 100%;
         }
         .textbox {
             height: 1rem;
@@ -97,30 +104,96 @@
             display: block;
         }
 
-        nav, #stats, footer {
+        nav span, nav a {
+            display: block;
+            padding: 0.6rem 1rem;
+            background: #212B4E;
+        }
+        nav a {
+            opacity: 0.5;
+        }
+
+        #filters, #stats, footer {
             background: #212B4E;
             user-select: none;
             padding: 1rem;
         }
-        nav {
+        #filters {
             grid-area: filters;
             overflow: auto;
         }
+
+        #content {
+            grid-area: table;
+            overflow: auto;
+            position: relative;
+            margin: 0 1rem 1rem 1rem;
+        }
+
+        .status {
+            text-align: center;
+            opacity: 0.5;
+        }
+        body:not(.loading-state) #loading-state {
+            display: none;
+        }
+        body:not(.error-state) #error-state {
+            display: none;
+        }
+
+        footer {
+            margin-top: 2px;
+        }
+        footer div {
+            opacity: 0.5;
+        }
+
+        @media (max-width: 1060px) {
+            body {
+                grid-template-areas:
+                    'header'
+                    'filters'
+                    'table'
+                    'stats'
+                    'footer';
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto 1fr auto auto;
+            }
+            nav {
+                padding: 0 1rem;
+            }
+            #filters {
+                overflow: visible;
+            }
+            #content {
+                overflow: visible;
+                margin-top: 1rem;
+            }
+        }
+    </style>
+    <style>
         #set-filters-button {
             display: none;
-
+            width: 100%;
+            margin-top: 1rem;
+        }
+        #set-filters-button, .play-button {
             border: none;
             background: rgba(255, 255, 255, 0.25);
             color: white;
             border-radius: 0.5rem;
             padding: 0.5rem;
-            margin-top: 1rem;
             box-sizing: border-box;
-            width: 100%;
             box-shadow: rgba(0, 0, 0, 0.25) 0 5px 5px;
         }
-        #set-filters-button:hover {
+        #set-filters-button:hover, .play-button:hover {
             background: rgba(255, 255, 255, 0.5);
+        }
+        .play-button {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            margin-bottom: 0.25rem;
         }
 
         .dropdown-header {
@@ -175,28 +248,22 @@
             opacity: 0.5;
         }
 
-        nav .top-checkbox-label {
+        #filters .top-checkbox-label {
             margin-top: 1rem;
         }
-        nav .checkbox-label {
+        #filters .checkbox-label {
             display: block;
             padding: 0.25rem;
             border-radius: 0.25rem;
         }
-        nav .checkbox-label:hover {
+        #filters .checkbox-label:hover {
             background: #37405D;
         }
-        nav .checkbox-label input {
+        #filters .checkbox-label input {
             display: inline-block;
             margin-right: 0.5rem;
         }
 
-        #servers-table {
-            grid-area: table;
-            overflow: auto;
-            position: relative;
-            margin: 0 1rem 1rem 1rem;
-        }
         .table-header-row, .table-row {
             display: grid;
             grid-template-columns: 2rem 40fr 5.5rem 10fr 10fr;
@@ -213,6 +280,7 @@
             white-space: nowrap;
             user-select: none;
             font-weight: bold;
+            z-index: 1;
         }
         .table-header {
             position: relative;
@@ -249,7 +317,17 @@
         }
         .table-row > div:first-child {
             padding: 0.5rem 0;
+            min-height: 16px;
             text-align: center;
+        }
+        .table-row:not(.server-selected) > div:first-child:hover {
+            background: #4d5a83;
+        }
+        .table-row:not(:hover) > div:first-child svg.play, .table-row.server-selected > div:first-child svg.play {
+            display: none;
+        }
+        .table-row:not(.server-selected):hover > div:first-child svg:not(.play) {
+            display: none;
         }
 
         .table-row:not(.server-selected) {
@@ -279,8 +357,10 @@
             margin: 0;
         }
         .server-details-extra {
-            opacity: 0.5;
             margin-top: 0.5rem;
+        }
+        .server-details-extra p, .server-details-extra ul {
+            opacity: 0.5;
         }
         .server-details-extra p {
             margin: 0;
@@ -289,8 +369,13 @@
             margin: 0.25rem 0 0 0;
             padding-left: 1.5rem;
         }
+        .server-details span {
+            background: rgba(255, 255, 0, 0.2);
+            font-weight: bold;
+        }
 
         #stats {
+            grid-area: stats;
             margin-top: 2px;
         }
         #stats div {
@@ -299,47 +384,70 @@
         #stats div:not(:first-child) {
             margin-top: 0.5rem;
         }
-        footer {
-            margin-top: 2px;
-        }
-        footer div {
-            opacity: 0.5;
-        }
 
-        .status {
-            text-align: center;
-            opacity: 0.5;
+        #overlay {
+            position: absolute;
+            left: 0;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 2;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
-        body:not(.loading-state) #loading-state {
-            display: none;
+        #overlay > div {
+            max-width: 20rem;
+            width: 100%;
+            background: #37405D;
+            box-shadow: rgba(0, 0, 0, 0.25) 0 5px 5px;
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem 1rem 1rem;
         }
-        body:not(.error-state) #error-state {
-            display: none;
+        #overlay p {
+            margin: 0 0 0.5rem 0;
+        }
+        #overlay form {
+            display: flex;
+        }
+        #overlay input, #overlay button {
+            color: inherit;
+            font: inherit;
+        }
+        #overlay input {
+            border: none;
+            padding: 0.5rem 0.7rem;
+            height: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 0.5rem;
+            flex-grow: 1;
+        }
+        #overlay button {
+            box-sizing: border-box;
+            width: 2rem;
+            height: 2rem;
+            padding: 0.5rem 0;
+            border-radius: 0.5rem;
+            border: none;
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: rgba(0, 0, 0, 0.25) 0 5px 5px;
+            margin-left: 0.5rem;
+        }
+        #overlay button svg {
+            height: 1rem;
+        }
+        #overlay button:hover {
+            background: rgba(255, 255, 255, 0.5);
         }
 
         @media (max-width: 1060px) {
-            body {
-                grid-template-areas:
-                    'header'
-                    'filters'
-                    'table'
-                    'stats'
-                    'footer';
-                grid-template-columns: 1fr;
-                grid-template-rows: auto auto 1fr auto auto;
-            }
-            nav {
-                overflow: visible;
-            }
             #set-filters-button {
                 display: block;
             }
-            nav .form-collapse {
+            #filters .form-collapse {
                 display: none;
-            }
-            #servers-table {
-                overflow: visible;
-                margin-top: 1rem;
             }
         }
         @media (max-width: 700px) {
@@ -358,7 +466,7 @@
                 grid-row: 1;
                 grid-column: 1;
             }
-            .table-row > div:nth-child(1):not(:empty) {
+            .table-row.server-private > div:nth-child(1) {
                 margin-right: 0.3rem;
             }
             .table-row > div:nth-child(2) {
@@ -381,6 +489,15 @@
                 margin: 0 0.25rem;
                 content: " - ";
             }
+            .table-row > div:nth-child(1) svg.play {
+                display: none !important;
+            }
+            .table-row > div:nth-child(1) svg:not(.play) {
+                display: block !important;
+            }
+            .table-row .play-button {
+                display: none;
+            }
         }
     </style>
 </head>
@@ -391,6 +508,8 @@
         <path id="lock-icon" d="M12 2a4 4 0 0 1 4 4v2h2.5A1.5 1.5 0 0 1 20 9.5v11a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 20.5v-11A1.5 1.5 0 0 1 5.5 8H8V6a4 4 0 0 1 4-4Zm0 11.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3ZM12 4a2 2 0 0 0-2 2v2h4V6a2 2 0 0 0-2-2Z" fill="currentColor" />
         <path id="arrow-down-icon" d="M11.883 4.01 12 4.003a1 1 0 0 1 .993.884l.007.116v11.584l2.293-2.294a1 1 0 0 1 1.32-.084l.094.084a1 1 0 0 1 .084 1.32l-.084.094-3.996 4a1 1 0 0 1-1.32.084l-.094-.084-4.004-4a1 1 0 0 1 1.32-1.498l.094.084L11 16.582V5.003a1 1 0 0 1 .883-.993L12 4.003l-.117.007Z" fill="currentColor" />
         <path id="clear-icon" d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2Zm3.53 6.47-.084-.073a.75.75 0 0 0-.882-.007l-.094.08L12 10.939l-2.47-2.47-.084-.072a.75.75 0 0 0-.882-.007l-.094.08-.073.084a.75.75 0 0 0-.007.882l.08.094L10.939 12l-2.47 2.47-.072.084a.75.75 0 0 0-.007.882l.08.094.084.073a.75.75 0 0 0 .882.007l.094-.08L12 13.061l2.47 2.47.084.072a.75.75 0 0 0 .882.007l.094-.08.073-.084a.75.75 0 0 0 .007-.882l-.08-.094L13.061 12l2.47-2.47.072-.084a.75.75 0 0 0 .007-.882l-.08-.094-.084-.073.084.073Z" fill="currentColor" />
+        <path id="play-icon" d="M5 5.274c0-1.707 1.826-2.792 3.325-1.977l12.362 6.726c1.566.853 1.566 3.101 0 3.953L8.325 20.702C6.826 21.518 5 20.432 5 18.726V5.274Z" fill="currentColor" />
+        <path id="arrow-right-icon" d="M13.704 4.284a1 1 0 1 0-1.403 1.424L17.67 11H4a1 1 0 1 0 0 2h13.665L12.3 18.285a1 1 0 0 0 1.403 1.424l6.925-6.822a1.25 1.25 0 0 0 0-1.78l-6.925-6.823Z" fill="currentColor" />
     </defs>
 </svg>
 
@@ -407,7 +526,12 @@
     </div>
 </header>
 
-<nav>
+<!--<nav>
+    <span>Browser</span>
+    <a href="stats/" title="Switch to server stats">Server stats</a>
+</nav>-->
+
+<div id="filters">
     <form id="form">
         <div class="textbox"><input type="text" id="filter" placeholder="Search servers..." size="10" aria-label="Server search" /></div>
         <div id="extra-filters" class="form-collapse">
@@ -425,7 +549,7 @@
         </div>
         <button id="set-filters-button">Set filters...</button>
     </form>
-</nav>
+</div>
 
 <div id="stats">
     <div>Last updated <span id="last-updated-stat"></span></div>
@@ -437,7 +561,7 @@
     </div>
 </div>
 
-<div id="servers-table">
+<div id="content">
     <div class="table-header-row">
         <div class="table-header" aria-label="Privacy" role="button" id="privacy-header" data-by="hasPassword"></div>
         <div class="table-header" role="button" id="name-header" data-by="name">Name</div>
@@ -458,6 +582,40 @@
 
 <script>
 
+function clearNode($node) {
+    $node.textContent = '';
+}
+
+function $useSvg(href, width, height) {
+    const $svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    $svg.setAttributeNS(null, 'width', width);
+    $svg.setAttributeNS(null, 'height', height);
+    $svg.setAttributeNS(null, 'viewBox', `0 0 ${width} ${height}`);
+
+    const $use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    $use.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', `#${href}`);
+    $svg.appendChild($use);
+
+    return $svg;
+}
+
+function textboxMount($textbox) {
+    const $input = $textbox.getElementsByTagName('input')[0];
+    const $clear = document.createElement('button');
+    $clear.className = 'clear';
+    $clear.onclick = () => {
+        $input.value = '';
+        $input.dispatchEvent(new Event('input'));
+        $input.dispatchEvent(new Event('change'));
+    };
+    $clear.appendChild($useSvg('clear-icon', 24, 24));
+    $textbox.appendChild($clear);
+}
+
+</script>
+
+<script>
+
 const REFETCH_WAIT_MS = 30000; // 30 seconds
 const REGION_REGEX = /^\[(.+?)\]/;
 const DEFAULT_QUERY = {
@@ -471,56 +629,75 @@ const DEFAULT_QUERY = {
     includePrivate: true,
 };
 const KNOWN_GAMEMODES = {
-    private_match: 'Private match',
-    tdm: 'Skirmish',
-    ps: 'Pilots vs Pilots',
-    gg: 'Gungame',
-    tt: 'Titan Tag',
-    inf: 'Infected',
-    fastball: 'Fastball',
-    ctf_comp: 'Competitive Capture the Flag',
-    hs: 'Hide and Seek',
-    cp: 'Hardpoint',
-    lts: 'Last Titan Standing',
-    ctf: 'Capture the Flag',
-    ttdm: 'Titan Brawl',
-    turbo_ttdm: 'Turbo Titan Brawl',
-    attdm: 'Aegis Titan Brawl',
-    ffa: 'Free for all',
-    fra: 'Free Agents',
+    private_match: 'Private Match',
+    aitdm: 'Attrition',
+    at: 'Bounty Hunt',
     coliseum: 'Coliseum',
+    cp: 'Amped Hardpoint',
+    ctf: 'Capture the Flag',
+    fd_easy: 'Frontier Defense (Easy)',
+    fd_hard: 'Frontier Defense (Hard)',
+    fd_insane: 'Frontier Defense (Insane)',
+    fd_master: 'Frontier Defense (Master)',
+    fd_normal: 'Frontier Defense (Regular)',
     lf: 'Live Fire',
-    rocket_lf: 'Rocket Arena',
+    lts: 'Last Titan Standing',
     mfd: 'Marked for Death',
-    kr: 'Amped Killrace',
+    ps: 'Pilots vs. Pilots',
+    solo: 'Campaign',
+    tdm: 'Skirmish',
+    ttdm: 'Titan Brawl',
+
+    alts: 'Aegis Last Titan Standing',
+    attdm: 'Aegis Titan Brawl',
+    ffa: 'Free For All',
+    fra: 'Free Agents',
+    holopilot_lf: 'The Great Bamboozle',
+    rocket_lf: 'Rocket Arena',
+    turbo_lts: 'Turbo Last Titan Standing',
+    turbo_ttdm: 'Turbo Titan Brawl',
+
     chamber: 'One in the Chamber',
-    hidden: 'The Hidden'
+    ctf_comp: 'Competitive CTF',
+    fastball: 'Fastball',
+    gg: 'Gun Game',
+    hidden: 'The Hidden',
+    hs: 'Hide and Seek',
+    inf: 'Infection',
+    kr: 'Amped Killrace',
+    sbox: 'Sandbox',
+    sns: 'Sticks and Stones',
+    tffa: 'Titan FFA',
+    tt: 'Titan Tag',
+
+    sp_coop: 'Campaign Coop',
 };
 const KNOWN_MAPS = {
     mp_angel_city: 'Angel City',
     mp_black_water_canal: 'Black Water Canal',
-    mp_grave: 'Boomtown',
+    mp_box: 'Box',
+    mp_coliseum: 'Coliseum',
+    mp_coliseum_column: 'Pillars',
     mp_colony02: 'Colony',
     mp_complex3: 'Complex',
-    mp_crashsite3: 'Crashsite',
+    mp_crashsite3: 'Crash Site',
     mp_drydock: 'Drydock',
     mp_eden: 'Eden',
-    mp_thaw: 'Exoplanet',
-    mp_forwardbase_kodai: 'Forward Base Kodai',
+    mp_forwardbase_kodai: 'Forwardbase Kodai',
     mp_glitch: 'Glitch',
+    mp_grave: 'Boomtown',
     mp_homestead: 'Homestead',
-    mp_relic02: 'Relic',
-    mp_rise: 'Rise',
-    mp_wargames: 'Wargames',
-    mp_lobby: 'Lobby',
     mp_lf_deck: 'Deck',
     mp_lf_meadow: 'Meadow',
     mp_lf_stacks: 'Stacks',
     mp_lf_township: 'Township',
     mp_lf_traffic: 'Traffic',
     mp_lf_uma: 'UMA',
-    mp_coliseum: 'The Coliseum',
-    mp_coliseum_column: 'Pillars',
+    mp_lobby: 'Lobby',
+    mp_relic02: 'Relic',
+    mp_rise: 'Rise',
+    mp_thaw: 'Exoplanet',
+    mp_wargames: 'War Games',
 };
 
 const $filterInput = document.getElementById('filter');
@@ -539,34 +716,6 @@ const $serversListedStat = document.getElementById('servers-listed-stat');
 const $serversOnlineStat = document.getElementById('servers-online-stat');
 const $playersListedStat = document.getElementById('players-listed-stat');
 const $playersOnlineStat = document.getElementById('players-online-stat');
-
-let isMounting = true;
-let uiState = {
-    state: 'loading',
-};
-let currentQuery = {...DEFAULT_QUERY};
-const currentSort = {
-    sortBy: '',
-    sortInverted: false,
-};
-let currentServerId = undefined;
-
-function clearNode($node) {
-    $node.textContent = '';
-}
-
-function $useSvg(href, width, height) {
-    const $svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    $svg.setAttributeNS(null, 'width', width);
-    $svg.setAttributeNS(null, 'height', height);
-    $svg.setAttributeNS(null, 'viewBox', `0 0 ${width} ${height}`);
-
-    const $use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-    $use.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', `#${href}`);
-    $svg.appendChild($use);
-
-    return $svg;
-}
 
 function serializeQuery(searchParams, query) {
     if (query.filter !== '') searchParams.set('filter', query.filter);
@@ -600,6 +749,21 @@ function deserializeQuery(searchParams) {
     return query;
 }
 
+let isMounting = true;
+let uiState = {
+    state: 'loading',
+};
+let currentQuery = deserializeQuery(new URL(window.location).searchParams);
+const currentSort = {
+    sortBy: '',
+    sortInverted: false,
+};
+let currentServerId = undefined;
+
+let overlayState = {
+    state: 'none',
+};
+
 function setQueryParam(param, value) {
     if (isMounting || value === currentQuery[param]) return;
     setCurrentQuery({
@@ -631,6 +795,27 @@ function displayMap(map) {
     return KNOWN_MAPS[map] || map;
 }
 
+function displayMod(mod) {
+    return `${mod.Name} ${mod.Version}`;
+}
+
+function getServerDisplayProp(server, prop) {
+    switch (prop) {
+        case 'playlist': return displayGamemode(server.playlist);
+        case 'map': return displayMap(server.map);
+        default: return server[prop];
+    }
+}
+
+function getServerJoinUrl(server, password) {
+    const baseUrl = `northstar://server@${server.id}`;
+    if (password) {
+        return `${baseUrl}:${btoa(password)}`;
+    } else {
+        return baseUrl;
+    }
+}
+
 function createMenu(openByDefault, openCb, closeCb) {
     let isOpen = false;
 
@@ -653,6 +838,19 @@ function createMenu(openByDefault, openCb, closeCb) {
     };
     if (openByDefault) open();
     return open;
+}
+
+function uiJoinServer(server) {
+    if (!server.hasPassword) {
+        window.location = getServerJoinUrl(server, '');
+        return;
+    }
+
+    overlayState = {
+        state: 'passwordPrompt',
+        server,
+    };
+    uiRenderOverlay();
 }
 
 function uiGetServerList() {
@@ -679,7 +877,7 @@ function uiUpdateSelectors() {
         }
 
         for (const mod of server.modInfo.Mods) {
-            modsSet.add(mod.Name);
+            modsSet.add(displayMod(mod));
         }
     }
 
@@ -695,6 +893,7 @@ function uiUpdateSelectors() {
 let uiIsRenderQueued = false;
 function uiQueueRender() {
     if (uiIsRenderQueued) return;
+    uiIsRenderQueued = true;
     queueMicrotask(() => {
         uiIsRenderQueued = false;
         uiRender();
@@ -719,7 +918,7 @@ function uiRender() {
         if (currentQuery.maps.length > 0 && currentQuery.maps.indexOf(server.map) === -1) {
             return false;
         }
-        if (!currentQuery.mods.every(modName => server.modInfo.Mods.some(mod => mod.Name === modName))) {
+        if (!currentQuery.mods.every(modName => server.modInfo.Mods.some(mod => displayMod(mod) === modName))) {
             return false;
         }
         if (!currentQuery.includeFull && server.playerCount === server.maxPlayers) {
@@ -737,10 +936,9 @@ function uiRender() {
 
     if (currentSort.sortBy) {
         filteredServerList.sort((a, b) => {
-            //let isABeforeB = a[currentSort.sortBy] < b[currentSort.sortBy];
             let isABeforeB;
-            const aVal = a[currentSort.sortBy];
-            const bVal = b[currentSort.sortBy];
+            const aVal = getServerDisplayProp(a, currentSort.sortBy);
+            const bVal = getServerDisplayProp(b, currentSort.sortBy);
             if (typeof aVal === 'string') {
                 isABeforeB = aVal.localeCompare(bVal) > 0;
             } else {
@@ -756,25 +954,39 @@ function uiRender() {
     for (const server of filteredServerList) {
         const $row = document.createElement('div');
         $row.classList.add('table-row');
-
-        const $privateCell = document.createElement('div');
         if (server.hasPassword) {
-            $privateCell.appendChild($useSvg('lock-icon', 24, 24));
+            $row.classList.add('server-private');
         }
-        $row.appendChild($privateCell);
+
+        const playTitle = 'Join this server on Northstar';
+        const $actionCell = document.createElement('div');
+        $actionCell.title = playTitle;
+        if (server.hasPassword) {
+            $actionCell.appendChild($useSvg('lock-icon', 24, 24));
+        }
+        const $playButton = $useSvg('play-icon', 24, 24);
+        $playButton.classList.add('play');
+        $actionCell.appendChild($playButton);
+        $actionCell.onclick = e => {
+            if (currentServerId !== server.id) {
+                e.stopPropagation();
+                uiJoinServer(server);
+            }
+        };
+        $row.appendChild($actionCell);
 
         const $detailsCell = document.createElement('div');
         $detailsCell.classList.add('server-details');
         const $serverName = document.createElement('h3');
         if (currentQuery.filter !== '') {
             const filterIndex = server.name.toLowerCase().indexOf(currentQuery.filter.toLowerCase());
-            $serverName.append(server.name.substr(0, filterIndex));
+            $serverName.append(server.name.substring(0, filterIndex));
 
             const $highlight = document.createElement('span');
-            $highlight.textContent = server.name.substr(filterIndex, currentQuery.filter.length);
+            $highlight.textContent = server.name.substring(filterIndex, filterIndex + currentQuery.filter.length);
             $serverName.appendChild($highlight);
 
-            $serverName.append(server.name.substr(filterIndex + currentQuery.filter.length));
+            $serverName.append(server.name.substring(filterIndex + currentQuery.filter.length));
         } else {
             $serverName.textContent = server.name;
         }
@@ -794,6 +1006,14 @@ function uiRender() {
             $mods.appendChild($mod);
         }
         $details.append($mods);
+
+        const $longJoinButton = document.createElement('button');
+        $longJoinButton.classList.add('play-button');
+        $longJoinButton.appendChild($useSvg('play-icon', 24, 24));
+        $longJoinButton.append('Join server');
+        $longJoinButton.onclick = () => uiJoinServer(server);
+        $details.appendChild($longJoinButton);
+
         $detailsCell.appendChild($details);
         $row.appendChild($detailsCell);
 
@@ -814,10 +1034,12 @@ function uiRender() {
             () => {
                 currentServerId = server.id;
                 $row.classList.add('server-selected');
+                $actionCell.title = '';
             },
             () => {
                 if (currentServerId === server.id) currentServerId = undefined;
                 $row.classList.remove('server-selected');
+                $actionCell.title = playTitle;
             }
         );
 
@@ -834,6 +1056,69 @@ function uiRender() {
     $serversOnlineStat.textContent = serverList.length.toString();
     $playersListedStat.textContent = `${filteredServerList.reduce((sum, server) => sum + server.playerCount, 0)} / ${filteredServerList.reduce((sum, server) => sum + server.maxPlayers, 0)}`;
     $playersOnlineStat.textContent = `${serverList.reduce((sum, server) => sum + server.playerCount, 0)} / ${serverList.reduce((sum, server) => sum + server.maxPlayers, 0)}`;
+}
+
+function uiCloseOverlay() {
+    overlayState = { state: 'none' };
+    uiRenderOverlay();
+}
+
+function uiOverlayHandleEsc(e) {
+    if (e.key === 'Escape') {
+        uiCloseOverlay();
+    }
+}
+
+function uiRenderOverlay() {
+    const currentState = overlayState;
+
+    const $overlay = document.getElementById('overlay');
+    if ($overlay) {
+        $overlay.remove();
+    }
+
+    document.body.removeEventListener('keydown', uiOverlayHandleEsc);
+    if (currentState.state !== 'none') {
+        document.body.addEventListener('keydown', uiOverlayHandleEsc);
+    }
+
+    if (currentState.state === 'passwordPrompt') {
+        const $overlay = document.createElement('div');
+        $overlay.id = 'overlay';
+
+        const $dialog = document.createElement('div');
+
+        const $body = document.createElement('p');
+        $body.textContent = currentState.server.name;
+        $dialog.appendChild($body);
+
+        const $form = document.createElement('form');
+
+        const $input = document.createElement('input');
+        $input.type = 'password';
+        $input.placeholder = 'Server password';
+        $form.appendChild($input);
+        const $continue = document.createElement('button');
+        $continue.appendChild($useSvg('arrow-right-icon', 24, 24));
+        $form.appendChild($continue);
+
+        $dialog.appendChild($form);
+        $overlay.appendChild($dialog);
+
+        document.body.appendChild($overlay);
+
+        setTimeout(() => $input.focus(), 0);
+        $overlay.onclick = e => {
+            e.stopPropagation();
+            uiCloseOverlay();
+        }
+        $dialog.onclick = e => e.stopPropagation();
+        $form.onsubmit = e => {
+            e.preventDefault();
+            window.location = getServerJoinUrl(currentState.server, $input.value);
+            uiCloseOverlay();
+        };
+    }
 }
 
 function dropdownMount($dropdown) {
@@ -935,18 +1220,6 @@ function dropdownSetSelectedEntries($dropdown, selectedEntries) {
     dropdownForceSetSelectedEntries($dropdown, selectedEntries);
 }
 
-function textboxMount($textbox) {
-    const $input = $textbox.getElementsByTagName('input')[0];
-    const $clear = document.createElement('button');
-    $clear.className = 'clear';
-    $clear.onclick = () => {
-        $input.value = '';
-        $input.dispatchEvent(new Event('input'));
-    };
-    $clear.appendChild($useSvg('clear-icon', 24, 24));
-    $textbox.appendChild($clear);
-}
-
 function sortRemoveClasses() {
     for (const currentSortDown of document.getElementsByClassName('sort-down')) {
         currentSortDown.classList.remove('sort-down');
@@ -987,6 +1260,10 @@ function sortToggle($header) {
 
 async function fetchServerList() {
     try {
+        document.body.classList.remove('error-state');
+        if (uiState.state !== 'ready') {
+            document.body.classList.add('loading-state');
+        }
         const res = await fetch('https://northstar.tf/client/servers');
         const servers = await res.json();
         uiState = {
@@ -1005,8 +1282,6 @@ async function fetchServerList() {
     uiUpdateSelectors();
     uiQueueRender();
 }
-
-currentQuery = deserializeQuery(new URL(window.location).searchParams);
 
 let nextRefetchTimeout = 0;
 async function refetchLoopTrigger() {
@@ -1051,8 +1326,6 @@ $setFiltersButton.onclick = () => {
     }
 };
 
-isMounting = false;
-
 // Update fields to match the current query
 $filterInput.value = currentQuery.filter;
 dropdownSetSelectedEntries($regionsInput, currentQuery.regions.map(region => [region, region]));
@@ -1062,6 +1335,8 @@ dropdownSetSelectedEntries($modsInput, currentQuery.mods.map(mod => [mod, mod]))
 $includeFullInput.checked = currentQuery.includeFull;
 $includeEmptyInput.checked = currentQuery.includeEmpty;
 $includePrivateInput.checked = currentQuery.includePrivate;
+
+isMounting = false;
 
 refetchLoopTrigger();
 
